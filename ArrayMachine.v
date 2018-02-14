@@ -1,5 +1,5 @@
 Require Import Rushby.
-Require Import list relations collections fin_collections.
+From stdpp Require Import list relations collections fin_collections.
 
 Module ArrayMachine <: Mealy.
 

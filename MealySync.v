@@ -1,5 +1,5 @@
 Require Import Rushby.
-Require Import base.
+From stdpp Require Import base.
 
 Class MSync (state action out : Type) 
   := {
@@ -25,29 +25,24 @@ Section MealyM.
 Variable state action out : Type.
 Variable MM : MSync state action out.
 Variable domain : Type.
-Check Policy.
-Variable P : Policy domain.
-Variable VP : ViewPartition domain.
+Check @Policy.
+Variable P : @Policy action domain.
+Variable VP : @ViewPartition action domain.
 
 
 Definition sync_separation `{Policy action domain} := forall (s : state) (b : action) (a : action),
    ¬ (delayed a s) ∧ (delayed a (step s a))
    → policy (Rushby.dom b) (Rushby.dom a).
 
-Definition sync_interf `{Policy action domain} `{MMs : MMsync state action out}
-
-Class SyncPartition {domain state action out : Type} (MMs : MMsync state action out) {P : Policy domain} {VP : @ViewPartition state domain} :=  { 
-  sync_partitioned : forall s t a,  view_partition (Rushby.dom a) s t  -> (delayed a s <-> delayed a t)
- }.
-
+End MealyM.
 
 Section Unwinding.
 Context {state action out : Type}.
 Context {domain : Type}.
 Context {P : @Policy action domain}.
 Context {VP : @ViewPartition state domain}.
-Context {MMs : MMsync state action out}.
-Definition MM := underlyingM.
+Context {MMs : MSync state action out}.
+Definition MM := msync_mealy.
 Definition N := (@MMsync_is_MM domain state action out MMs).
 
 Context {OC : @OutputConsistent _ _ _ MM domain P VP}.

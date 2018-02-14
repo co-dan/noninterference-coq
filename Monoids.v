@@ -1,4 +1,4 @@
-Require Import base.
+From stdpp Require Import base.
 
 Class Monad M {ret : MRet M} {bind : MBind M} :=
   { ret_unit_1 : forall {A} (m : M A) , m ≫= mret = m

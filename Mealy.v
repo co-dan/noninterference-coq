@@ -1,4 +1,4 @@
-Require Import base.
+From stdpp Require Import base.
 Require Import Monoids.
 
 Class Mealy (state action out : Type) := {
