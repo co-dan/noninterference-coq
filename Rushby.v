@@ -1,13 +1,11 @@
-(** printing -> #→# *)
-(** printing (policy a b) #a ⇝ b# *)
-
 (** Formalisation of "Noninterference, Transitivity, and Channel-Control Security Policies" by J. Rushby 
     www.csl.sri.com/papers/csl-92-2/
 *)
 
+(** printing -> #→# *)
+(** printing (policy a b) #a ⇝ b# *)
 
-(** We use Robbert Krebbers' prelude, see https://github.com/robbertkrebbers/ch2o/tree/master/prelude **)  
-Require Import list relations collections fin_collections.
+From stdpp Require Import list relations collections fin_collections.
 Parameter FinSet : Type -> Type.
 (** begin hide **)
 Context `{forall A, ElemOf A (FinSet A)}.
@@ -17,8 +15,9 @@ Context `{forall A, Union (FinSet A)}.
 Context `{forall A, Intersection (FinSet A)}.
 Context `{forall A, Difference (FinSet A)}.
 Context `{forall A, Elements A (FinSet A)}.
-Context `{forall A, Collection A (FinSet A)}. (* TODO: i wrote this line down so that there is a Collection -> SimpleCollection -> JoinSemiLattice instance for FinSet; how come this is not automatically picked up by the next assumption? *)
-Context `{forall A (H : (forall (a b :A), Decision (a = b))), FinCollection A (FinSet A)}.
+Context `{forall A, Collection A (FinSet A)}.
+(* TODO: i wrote this line down so that there is a Collection -> SimpleCollection -> JoinSemiLattice instance for FinSet; how come this is not automatically picked up by the next assumption? *)
+Context `{forall A (H : EqDecision A), FinCollection A (FinSet A)}.
 (** end hide **)
 
 (** * Mealy machines *)
@@ -73,9 +72,9 @@ Class Policy (domain : Type) := {
   do need implicit coercions to get automatic resolution of typeclass
   instances. *)
 
-  domain_dec :> forall (x y : domain), Decision (x = y);
+  domain_dec :> EqDecision domain;
   policy :> relation domain;
-  policy_dec :> (forall v w, Decision (policy v w));
+  policy_dec :> RelDecision policy;
   policy_refl :> Reflexive policy
 }.
 
@@ -227,7 +226,7 @@ Class StructuredState (domain : Type)  := {
   name : Type;
   value : Type;
   contents : state -> name -> value;
-  value_dec :> forall (v1 v2 : value), Decision (v1 = v2);
+  value_dec :> EqDecision value;
   observe : domain -> FinSet name;
   alter : domain -> FinSet name
 }.
@@ -357,16 +356,16 @@ Qed.
 
 Hint Resolve sources_mon.
 
-Lemma sources_monotone `{Policy} : forall ls js d, ls `sublist` js → sources ls d ⊆ sources js d.
+Lemma sources_monotone `{Policy} : forall ls js d, sublist ls js → sources ls d ⊆ sources js d.
 Proof.
   intros ls js d M.
   induction M. simpl. reflexivity.
-  simpl. destruct (decide (∃ v : domain, v ∈ sources l1 d ∧ policy (dom x) v)); destruct (decide (∃ v : domain, v ∈ sources l2 d ∧ policy (dom x) v)).
-  apply union_preserving_r. assumption.
-  exfalso. apply n. destruct e as [v [e1 e2]]. exists v; split; try (apply (IHM v)); assumption.
-  transitivity (sources l2 d). assumption. apply union_subseteq_l.
-  assumption.
-  transitivity (sources l2 d); auto. 
+  simpl. destruct (decide (∃ v : domain, v ∈ sources l1 d ∧ policy (dom x) v)); destruct (decide (∃ v : domain, v ∈ sources l2 d ∧ policy (dom x) v)).  
+  - apply union_mono_r. assumption.
+  - exfalso. apply n. destruct e as [v [e1 e2]]. exists v; split; try (apply (IHM v)); assumption.
+  - transitivity (sources l2 d). assumption. apply union_subseteq_l.
+  - assumption.
+  - transitivity (sources l2 d); auto. 
 Qed.
 
 Lemma sources_in `{Policy} : forall ls d, d ∈ sources ls d.
@@ -378,7 +377,11 @@ Qed.
 
 Hint Resolve sources_in.
 
-Fixpoint ipurge `{Policy} (ls : list action) (d : domain) :=
+(* TODO: why is this not picked up automatically? *)
+Instance sources_elem_of_dec `{Policy} (v : domain) ls d : Decision (v ∈ sources ls d).
+Proof. apply elem_of_dec_slow. Qed.
+
+Fixpoint ipurge `{Policy} (ls : list action) (d : domain) {struct ls} : list action :=
   match ls with
     | [] => []
     | a::tl => if (decide ((dom a) ∈ sources ls d))
